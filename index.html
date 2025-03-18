@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الدردشة الجماعية</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --my-message-bg: #DCF8C6;
+            --other-message-bg: #FFFFFF;
+        }
+
+        .hidden { display: none; }
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .login-form input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .login-form button {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+
+        .chat-section {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .chat-messages {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            min-height: 500px;
+            max-height: 600px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            padding: 12px 16px;
+            margin: 10px 0;
+            border-radius: 12px;
+            max-width: 70%;
+            position: relative;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .my-message {
+            background: var(--my-message-bg);
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .other-message {
+            background: var(--other-message-bg);
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+        }
+
+        .message-sender {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .message-time {
+            color: #666;
+            font-size: 0.85em;
+        }
+
+        .message-input-area {
+            display: flex;
+            gap: 10px;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        #messageInput {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .send-btn {
+            background: var(--secondary-color);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .send-btn:hover {
+            background: #2980b9;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- تسجيل الدخول -->
+    <div id="loginSection" class="login-container">
+        <h2 style="text-align: center; margin-bottom: 30px; color: var(--primary-color);">تسجيل الدخول للدردشة</h2>
+        <form id="loginForm" class="login-form">
+            <input type="text" id="username" placeholder="اسم المستخدم" required>
+            <input type="password" id="password" placeholder="كلمة المرور" required>
+            <button type="submit">الدخول إلى الدردشة</button>
+        </form>
+    </div>
+
+    <!-- قسم الدردشة -->
+    <div id="chatSection" class="chat-section hidden">
+        <div class="chat-header">
+            <h1 style="color: var(--primary-color); margin: 0;">الدردشة الجماعية</h1>
+            <button id="logoutBtn" class="logout-btn">تسجيل الخروج</button>
+        </div>
+
+        <div class="chat-messages" id="chatMessages"></div>
+
+        <div class="message-input-area">
+            <input 
+                type="text" 
+                id="messageInput" 
+                placeholder="اكتب رسالتك هنا..."
+                required
+            >
+            <button type="button" class="send-btn" onclick="sendMessage()">إرسال</button>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        const API_URL = 'https://673a394a339a4ce445179ae7.mockapi.io/Post';
+        let allMessages = [];
+
+        // تسجيل الدخول
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(API_URL);
+                const users = await response.json();
+                
+                const user = users.find(u => u.username === username && u.password === password);
+                if (!user) throw new Error('بيانات الاعتماد غير صحيحة');
+
+                currentUser = user;
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                showChatSection();
+                loadMessages();
+                setInterval(loadMessages, 3000); // تحديث كل 3 ثواني
+            } catch (error) {
+                alert(`خطأ في التسجيل: ${error.message}`);
+            }
+        }
+
+        // تحميل الرسائل
+        async function loadMessages() {
+            try {
+                const response = await fetch(API_URL);
+                const users = await response.json();
+                
+                allMessages = [];
+                users.forEach(user => {
+                    if (user.messages) {
+                        user.messages.forEach(msg => {
+                            allMessages.push({
+                                ...msg,
+                                senderId: user.id,
+                                senderName: user.username,
+                                date: new Date(msg.date)
+                            });
+                        });
+                    }
+                });
+
+                allMessages.sort((a, b) => a.date - b.date);
+                renderMessages();
+            } catch (error) {
+                console.error('خطأ في تحميل الرسائل:', error);
+            }
+        }
+
+        // عرض الرسائل
+        function renderMessages() {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = '';
+
+            allMessages.forEach(msg => {
+                const isMyMessage = msg.senderId === currentUser.id;
+                const messageEl = document.createElement('div');
+                messageEl.className = `message ${isMyMessage ? 'my-message' : 'other-message'}`;
+                messageEl.innerHTML = `
+                    <div class="message-header">
+                        <span class="message-sender">${msg.senderName}</span>
+                        <span class="message-time">
+                            ${msg.date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    </div>
+                    <div>${msg.message}</div>
+                `;
+                container.appendChild(messageEl);
+            });
+
+            // التمرير للرسالة الأخيرة
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // إرسال الرسالة
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const messageText = messageInput.value.trim();
+
+            if (!messageText) return;
+
+            try {
+                // تحديث بيانات المستخدم الحالي
+                const updatedUser = {
+                    ...currentUser,
+                    messages: [...(currentUser.messages || []), {
+                        id: Date.now(),
+                        message: messageText,
+                        date: new Date().toISOString()
+                    }]
+                };
+
+                const response = await fetch(`${API_URL}/${currentUser.id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(updatedUser)
+                });
+
+                if (!response.ok) throw new Error('فشل في إرسال الرسالة');
+                
+                messageInput.value = '';
+                await loadMessages(); // إعادة تحميل الرسائل فورًا
+            } catch (error) {
+                alert(`خطأ في الإرسال: ${error.message}`);
+            }
+        }
+
+        // إدارة تسجيل الخروج
+        function logout() {
+            localStorage.removeItem('currentUser');
+            location.reload();
+        }
+
+        // عرض واجهة الدردشة
+        function showChatSection() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('chatSection').classList.remove('hidden');
+        }
+
+        // تهيئة أولية
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showChatSection();
+                loadMessages();
+                setInterval(loadMessages, 3000);
+            }
+        });
+
+        // Event Listeners
+        document.getElementById('loginForm').addEventListener('submit', handleLogin);
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
